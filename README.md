@@ -48,6 +48,25 @@ python -m src.models.train            # 3) entrenar modelos
 streamlit run app/streamlit_app.py    # 4) simular peleas
 ```
 
+## Resultados (test temporal: peleas 2024–2026)
+
+Evaluación honesta con split **temporal** (se entrena con peleas antiguas y se
+prueba con las más recientes, como en un despliegue real).
+
+| Modelo | Métrica | Valor |
+|--------|---------|-------|
+| Ganador | Accuracy | **0.62** (baseline logístico: 0.60) |
+| Ganador | ROC-AUC | 0.67 |
+| Ganador | Brier | 0.23 |
+| Método | Accuracy | 0.47 |
+| Método | macro-F1 | 0.40 |
+
+Predecir peleas de UFC solo con estadísticas **previas** (sin cuotas de casas de
+apuestas) es difícil: la literatura ronda 60–65 %. El modelo supera al baseline
+y produce probabilidades bien calibradas.
+
 ## Estado
 
-🚧 En construcción — se desarrolla por fases (ver historial de commits).
+✅ Pipeline completo (scraper → features → modelos → app). Las 4 fases están
+implementadas y testeadas (`pytest`). Ver historial de commits para el detalle
+por fase.

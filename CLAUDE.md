@@ -46,9 +46,18 @@ Salida en `data/raw/` (gitignored): `events.csv`, `fights.csv`, `fight_stats.csv
 
 Las estadísticas *dentro* de una pelea (golpes, derribos, control) son **resultados**, no predictores — usarlas para predecir el ganador es fuga de datos. Igual, las stats de carrera de la ficha del peleador son **acumuladas actuales** (incluyen la propia pelea y las futuras). Las features deben reconstruirse **solo del historial previo** a la fecha de cada pelea. Este invariante debe cubrirse con un test (`tests/test_no_leakage.py`) cuando se construya la Fase 2.
 
-## Estado por fases
+## Estado por fases (todas completas)
 
-1. ✅ Scraper — hecho y testeado.
-2. ⬜ Features leakage-safe + temporales (`src/features/build_features.py`) → `data/processed/dataset.csv`. Incluir simetría A/B (duplicar peleas con etiqueta invertida).
-3. ⬜ Modelos LightGBM (ganador + método), split **temporal**, calibración (`src/models/`).
-4. ⬜ Simulación + app Streamlit (`app/streamlit_app.py`).
+1. ✅ Scraper (`src/scraping/`, `src/utils.py`) → `data/raw/*.csv`.
+2. ✅ Features leakage-safe + temporales (`src/features/build_features.py`) → `data/processed/dataset.csv`. Acumulador cronológico (`_snapshot`/`_update`), simetría A/B. `latest_features()` reconstruye el estado actual de un peleador para simular.
+3. ✅ Modelos LightGBM ganador + método (`src/models/train.py`), split **temporal**, `class_weight='balanced'` para el método. Artefacto en `models/models.joblib`. La calibración isotónica se evaluó pero no mejora → se envían probs crudas.
+4. ✅ Simulación (`src/models/predict.py::simulate_fight`, promedia ambas orientaciones por simetría) + app Streamlit (`app/streamlit_app.py`).
+
+### Comandos del pipeline (con el patrón de entorno de arriba)
+
+```powershell
+& $py -m src.scraping.scraper            # actualizar datos (incremental)
+& $py -m src.features.build_features     # reconstruir dataset
+& $py -m src.models.train                # reentrenar modelos
+& $py -m streamlit run app/streamlit_app.py   # levantar la app
+```
