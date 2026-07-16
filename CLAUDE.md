@@ -50,7 +50,7 @@ Las estadísticas *dentro* de una pelea (golpes, derribos, control) son **result
 
 1. ✅ Scraper (`src/scraping/`, `src/utils.py`) → `data/raw/*.csv`.
 2. ✅ Features leakage-safe + temporales (`src/features/build_features.py`) → `data/processed/dataset.csv`. Acumulador cronológico (`_snapshot`/`_update`), simetría A/B. `latest_features()` reconstruye el estado actual de un peleador para simular.
-3. ✅ Modelos LightGBM ganador + método (`src/models/train.py`), split **temporal**, `class_weight='balanced'` para el método. Artefacto en `models/models.joblib`. La calibración isotónica se evaluó pero no mejora → se envían probs crudas.
+3. ✅ Modelos LightGBM ganador + método (`src/models/train.py`), split **temporal**, `class_weight='balanced'` para el método. Artefacto en `models/models.joblib`. La calibración isotónica se evaluó pero no mejora → se envían probs crudas. `src/models/tune.py` hace búsqueda aleatoria temporal de hiperparámetros → `models/best_params_winner.json` (que `train.py` carga si existe).
 4. ✅ Simulación (`src/models/predict.py::simulate_fight`, promedia ambas orientaciones por simetría) + app Streamlit (`app/streamlit_app.py`).
 
 ### Comandos del pipeline (con el patrón de entorno de arriba)
@@ -58,6 +58,7 @@ Las estadísticas *dentro* de una pelea (golpes, derribos, control) son **result
 ```powershell
 & $py -m src.scraping.scraper            # actualizar datos (incremental)
 & $py -m src.features.build_features     # reconstruir dataset
+& $py -m src.models.tune                 # (opcional) afinar hiperparametros del ganador
 & $py -m src.models.train                # reentrenar modelos
 & $py -m streamlit run app/streamlit_app.py   # levantar la app
 ```

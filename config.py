@@ -24,6 +24,9 @@ DATASET_CSV = PROCESSED_DIR / "dataset.csv"
 # Artefacto con los modelos entrenados + metadatos
 MODEL_PATH = MODELS_DIR / "models.joblib"
 
+# Hiperparámetros óptimos del modelo ganador (los genera src/models/tune.py)
+BEST_PARAMS_WINNER = MODELS_DIR / "best_params_winner.json"
+
 # --- Scraping (ufcstats.com) ---
 BASE_URL = "http://ufcstats.com"
 EVENTS_LIST_URL = f"{BASE_URL}/statistics/events/completed?page=all"

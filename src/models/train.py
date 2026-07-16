@@ -10,6 +10,8 @@ Guarda todo en models/models.joblib. Uso:  python -m src.models.train
 """
 from __future__ import annotations
 
+import json
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -47,11 +49,20 @@ def _features(df):
 
 
 def _lgbm(**kw):
-    params = dict(n_estimators=600, learning_rate=0.03, num_leaves=31,
-                  min_child_samples=50, subsample=0.8, colsample_bytree=0.8,
-                  reg_lambda=1.0, random_state=config.RANDOM_SEED, verbose=-1)
+    params = dict(n_estimators=1500, learning_rate=0.03, num_leaves=31,
+                  min_child_samples=50, subsample=0.8, subsample_freq=1,
+                  colsample_bytree=0.8, reg_lambda=1.0,
+                  random_state=config.RANDOM_SEED, verbose=-1)
     params.update(kw)
     return LGBMClassifier(**params)
+
+
+def _winner_overrides() -> dict:
+    """Mejores hiperparámetros del ganador si tune.py ya los generó, si no {}."""
+    if config.BEST_PARAMS_WINNER.exists():
+        with open(config.BEST_PARAMS_WINNER) as f:
+            return json.load(f)
+    return {}
 
 
 def _fit(model, Xtr, ytr, Xva, yva):
@@ -70,8 +81,11 @@ def train_winner(train, valid, test):
     base = LogisticRegression(max_iter=1000).fit(scaler.transform(Xtr[num].fillna(0)), ytr)
     p_base = base.predict_proba(scaler.transform(Xte[num].fillna(0)))[:, 1]
 
-    # --- LightGBM ---
-    model = _fit(_lgbm(), Xtr, ytr, Xva, yva)
+    # --- LightGBM (usa hiperparámetros afinados por tune.py si existen) ---
+    overrides = _winner_overrides()
+    if overrides:
+        print("usando hiperparámetros afinados:", overrides)
+    model = _fit(_lgbm(**overrides), Xtr, ytr, Xva, yva)
     p_raw = model.predict_proba(Xte)[:, 1]
 
     # --- Análisis de calibración isotónica (ajustada en valid) ---
