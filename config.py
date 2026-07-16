@@ -18,6 +18,9 @@ FIGHTS_CSV = RAW_DIR / "fights.csv"
 FIGHT_STATS_CSV = RAW_DIR / "fight_stats.csv"
 FIGHTERS_CSV = RAW_DIR / "fighters.csv"
 
+# Dataset procesado (features listas para modelar)
+DATASET_CSV = PROCESSED_DIR / "dataset.csv"
+
 # --- Scraping (ufcstats.com) ---
 BASE_URL = "http://ufcstats.com"
 EVENTS_LIST_URL = f"{BASE_URL}/statistics/events/completed?page=all"
