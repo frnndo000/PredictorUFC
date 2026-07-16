@@ -24,7 +24,7 @@ EVENTS_LIST_URL = f"{BASE_URL}/statistics/events/completed?page=all"
 REQUEST_DELAY_SEC = 0.6          # pausa cortés entre requests
 REQUEST_TIMEOUT_SEC = 20
 MAX_RETRIES = 3
-USER_AGENT = "PredictorUFC/1.0 (proyecto educativo)"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) PredictorUFC/1.0 (proyecto educativo)"
 
 # --- Reproducibilidad ---
 RANDOM_SEED = 42
