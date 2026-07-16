@@ -62,69 +62,88 @@ def build_long(fights: pd.DataFrame, stats: pd.DataFrame) -> pd.DataFrame:
     return long.sort_values(["date", "fight_id"]).reset_index(drop=True)
 
 
+def _empty_acc() -> dict:
+    return {"n": 0, "wins": 0, "ko_wins": 0, "sub_wins": 0, "streak": 0,
+            "minutes": 0.0, "sig_l": 0.0, "sig_a": 0.0, "osig_l": 0.0, "osig_a": 0.0,
+            "td_l": 0.0, "td_a": 0.0, "otd_l": 0.0, "otd_a": 0.0, "ctrl": 0.0,
+            "sub": 0.0, "kd": 0.0, "last_date": None}
+
+
+_EMPTY = _empty_acc()  # solo lectura, para snapshots sin historial
+
+
+def _snapshot(a: dict | None, when) -> dict:
+    """Feature dict a partir del estado acumulado `a`, evaluado a la fecha `when`."""
+    a = a or _EMPTY
+    n, mins = a["n"], a["minutes"]
+
+    def ratio(num, den):
+        return a[num] / a[den] if a[den] else np.nan
+
+    return {
+        "exp": n,
+        "win_rate": a["wins"] / n if n else np.nan,
+        "streak": a["streak"],
+        "ko_rate": a["ko_wins"] / n if n else np.nan,
+        "sub_rate": a["sub_wins"] / n if n else np.nan,
+        "finish_rate": (a["ko_wins"] + a["sub_wins"]) / n if n else np.nan,
+        "days_since_last": (when - a["last_date"]).days if a["last_date"] is not None else np.nan,
+        "sig_pm": a["sig_l"] / mins if mins else np.nan,
+        "sig_absorbed_pm": a["osig_l"] / mins if mins else np.nan,
+        "sig_acc": ratio("sig_l", "sig_a"),
+        "str_def": 1 - a["osig_l"] / a["osig_a"] if a["osig_a"] else np.nan,
+        "td_pm": a["td_l"] / mins if mins else np.nan,
+        "td_acc": ratio("td_l", "td_a"),
+        "td_def": 1 - a["otd_l"] / a["otd_a"] if a["otd_a"] else np.nan,
+        "ctrl_pm": a["ctrl"] / mins if mins else np.nan,
+        "sub_att_pm": a["sub"] / mins if mins else np.nan,
+        "kd_pm": a["kd"] / mins if mins else np.nan,
+        "avg_fight_time": mins / n if n else np.nan,
+    }
+
+
+def _update(a: dict, r) -> None:
+    """Suma el resultado de la pelea `r` al acumulador `a` (muta `a`)."""
+    a["n"] += 1
+    if r.won:
+        a["wins"] += 1
+        a["streak"] = a["streak"] + 1 if a["streak"] > 0 else 1
+        if r.method == "KO/TKO":
+            a["ko_wins"] += 1
+        elif r.method == "SUB":
+            a["sub_wins"] += 1
+    else:
+        a["streak"] = a["streak"] - 1 if a["streak"] < 0 else -1
+    a["minutes"] += r.minutes
+    a["sig_l"] += _nz(r.sig_str_landed); a["sig_a"] += _nz(r.sig_str_att)
+    a["osig_l"] += _nz(r.sig_str_landed_opp); a["osig_a"] += _nz(r.sig_str_att_opp)
+    a["td_l"] += _nz(r.td_landed); a["td_a"] += _nz(r.td_att)
+    a["otd_l"] += _nz(r.td_landed_opp); a["otd_a"] += _nz(r.td_att_opp)
+    a["ctrl"] += _nz(r.ctrl_sec); a["sub"] += _nz(r.sub_att); a["kd"] += _nz(r.kd)
+    a["last_date"] = r.date
+
+
 def compute_prefight_features(long: pd.DataFrame) -> pd.DataFrame:
     """Features PRE-pelea por (fight_id, fighter_id), leakage-safe por construcción."""
     acc: dict[str, dict] = {}
     rows = []
-
     for r in long.itertuples(index=False):
         a = acc.get(r.fighter_id)
-        n = a["n"] if a else 0
-        mins = a["minutes"] if a else 0.0
-
-        def ratio(num, den):
-            return (a[num] / a[den]) if a and a[den] else np.nan
-
-        feat = {
-            "fight_id": r.fight_id, "fighter_id": r.fighter_id,
-            "exp": n,
-            "win_rate": (a["wins"] / n) if n else np.nan,
-            "streak": a["streak"] if a else 0,
-            "ko_rate": (a["ko_wins"] / n) if n else np.nan,
-            "sub_rate": (a["sub_wins"] / n) if n else np.nan,
-            "finish_rate": ((a["ko_wins"] + a["sub_wins"]) / n) if n else np.nan,
-            "days_since_last": (r.date - a["last_date"]).days if a else np.nan,
-            "sig_pm": (a["sig_l"] / mins) if mins else np.nan,
-            "sig_absorbed_pm": (a["osig_l"] / mins) if mins else np.nan,
-            "sig_acc": ratio("sig_l", "sig_a"),
-            "str_def": (1 - a["osig_l"] / a["osig_a"]) if a and a["osig_a"] else np.nan,
-            "td_pm": (a["td_l"] / mins) if mins else np.nan,
-            "td_acc": ratio("td_l", "td_a"),
-            "td_def": (1 - a["otd_l"] / a["otd_a"]) if a and a["otd_a"] else np.nan,
-            "ctrl_pm": (a["ctrl"] / mins) if mins else np.nan,
-            "sub_att_pm": (a["sub"] / mins) if mins else np.nan,
-            "kd_pm": (a["kd"] / mins) if mins else np.nan,
-            "avg_fight_time": (mins / n) if n else np.nan,
-        }
-        rows.append(feat)
-
-        # --- Actualizar el acumulador con ESTA pelea (después de leer) ---
+        rows.append({"fight_id": r.fight_id, "fighter_id": r.fighter_id,
+                     **_snapshot(a, r.date)})   # se LEE antes de actualizar
         if a is None:
-            a = acc[r.fighter_id] = {
-                "n": 0, "wins": 0, "ko_wins": 0, "sub_wins": 0, "streak": 0,
-                "minutes": 0.0, "sig_l": 0.0, "sig_a": 0.0, "osig_l": 0.0,
-                "osig_a": 0.0, "td_l": 0.0, "td_a": 0.0, "otd_l": 0.0,
-                "otd_a": 0.0, "ctrl": 0.0, "sub": 0.0, "kd": 0.0, "last_date": None,
-            }
-        a["n"] += 1
-        if r.won:
-            a["wins"] += 1
-            a["streak"] = a["streak"] + 1 if a["streak"] > 0 else 1
-            if r.method == "KO/TKO":
-                a["ko_wins"] += 1
-            elif r.method == "SUB":
-                a["sub_wins"] += 1
-        else:
-            a["streak"] = a["streak"] - 1 if a["streak"] < 0 else -1
-        a["minutes"] += r.minutes
-        a["sig_l"] += _nz(r.sig_str_landed); a["sig_a"] += _nz(r.sig_str_att)
-        a["osig_l"] += _nz(r.sig_str_landed_opp); a["osig_a"] += _nz(r.sig_str_att_opp)
-        a["td_l"] += _nz(r.td_landed); a["td_a"] += _nz(r.td_att)
-        a["otd_l"] += _nz(r.td_landed_opp); a["otd_a"] += _nz(r.td_att_opp)
-        a["ctrl"] += _nz(r.ctrl_sec); a["sub"] += _nz(r.sub_att); a["kd"] += _nz(r.kd)
-        a["last_date"] = r.date
-
+            a = acc[r.fighter_id] = _empty_acc()
+        _update(a, r)
     return pd.DataFrame(rows).set_index(["fight_id", "fighter_id"])
+
+
+def latest_features(long: pd.DataFrame, when) -> dict:
+    """Estado actual de cada peleador (tras TODAS sus peleas), para simular una nueva."""
+    acc: dict[str, dict] = {}
+    for r in long.itertuples(index=False):
+        a = acc.get(r.fighter_id) or acc.setdefault(r.fighter_id, _empty_acc())
+        _update(a, r)
+    return {fid: _snapshot(a, when) for fid, a in acc.items()}
 
 
 def assemble(fights, prefeat, fighters) -> pd.DataFrame:
