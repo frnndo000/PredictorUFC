@@ -7,6 +7,13 @@ distribución del método.
 
 > ⚠️ Proyecto educativo / de portafolio. No está pensado para apuestas.
 
+## Demo
+
+![Demo de la app Predictor UFC](assets/demo.gif)
+
+*Eliges dos peleadores y la app estima la probabilidad de victoria de cada uno y
+el método más probable, en tiempo real.*
+
 ## Objetivo
 
 Demostrar un flujo de trabajo completo y reproducible de data science aplicado al deporte:
