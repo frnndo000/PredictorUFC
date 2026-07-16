@@ -1,0 +1,26 @@
+# Entornos
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Datos crudos y procesados (se regeneran con el scraper) y modelos entrenados
+data/raw/*.csv
+data/processed/*.csv
+models/*.joblib
+models/*.pkl
+
+# Sistema / editor
+.DS_Store
+.vscode/
+*.log
+
+# Mantener las carpetas aunque estén vacías
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!models/.gitkeep
