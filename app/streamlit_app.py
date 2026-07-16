@@ -9,10 +9,11 @@ from pathlib import Path
 # Permite ejecutar con `streamlit run` (añade la raíz del proyecto al path).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from src.models.predict import list_fighters, simulate_fight
+from src.models.predict import explain_winner, list_fighters, simulate_fight
 
 METHOD_ES = {"KO/TKO": "KO/TKO", "SUB": "Sumisión", "DEC": "Decisión"}
 
@@ -65,6 +66,20 @@ if st.button("Simular pelea", type="primary", use_container_width=True):
     top_method = method_df.index[0]
     st.write(f"Más probable: **{top_method}** ({method_df.iloc[0, 0]*100:.0f}%)")
     st.bar_chart(method_df, horizontal=True)
+
+    st.markdown("#### 🔍 ¿Por qué esta predicción?")
+    contribs = explain_winner(name_to_id[name_a], name_to_id[name_b], title_bout=title_bout)
+    labels = [c["label"] for c in contribs][::-1]
+    values = [c["value"] for c in contribs][::-1]
+    colors = ["#e74c3c" if v > 0 else "#3498db" for v in values]  # rojo=A, azul=B
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.barh(labels, values, color=colors)
+    ax.axvline(0, color="gray", linewidth=0.8)
+    ax.set_xlabel(f"←  favorece a {r['name_b']}        favorece a {r['name_a']}  →")
+    fig.tight_layout()
+    st.pyplot(fig)
+    st.caption("Contribuciones SHAP: cuánto empuja cada estadística la predicción "
+               "hacia un peleador u otro (las que más pesan arriba).")
 
 st.divider()
 st.caption("⚠️ Proyecto educativo / de portafolio. No usar para apuestas. "
