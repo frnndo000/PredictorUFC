@@ -21,6 +21,9 @@ FIGHTERS_CSV = RAW_DIR / "fighters.csv"
 # Dataset procesado (features listas para modelar)
 DATASET_CSV = PROCESSED_DIR / "dataset.csv"
 
+# Artefacto con los modelos entrenados + metadatos
+MODEL_PATH = MODELS_DIR / "models.joblib"
+
 # --- Scraping (ufcstats.com) ---
 BASE_URL = "http://ufcstats.com"
 EVENTS_LIST_URL = f"{BASE_URL}/statistics/events/completed?page=all"
